@@ -85,6 +85,7 @@
 #include "examples/httpd/fs_example/fs_example.h"
 #include "examples/httpd/https_example/https_example.h"
 #include "examples/httpd/ssi_example/ssi_example.h"
+#include "examples/httpd/config_ssi/config_ssi.h"
 
 #include "default_netif.h"
 
@@ -533,7 +534,7 @@ apps_init(void)
 #endif
   httpd_init();
 #if defined(LWIP_HTTPD_EXAMPLE_SSI_SIMPLE) && LWIP_HTTPD_EXAMPLE_SSI_SIMPLE
-  ssi_ex_init();
+  config_ssi_init();
 #endif
 #if defined(LWIP_HTTPD_EXAMPLE_CGI_SIMPLE) && LWIP_HTTPD_EXAMPLE_CGI_SIMPLE
   cgi_ex_init();

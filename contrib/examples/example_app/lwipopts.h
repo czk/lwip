@@ -308,6 +308,13 @@ a lot of data that needs to be copied, this should be set high. */
 
 #endif /* PPP_SUPPORT */
 
+/* ---------- HTTPD options ---------- */
+#define LWIP_HTTPD_SSI                  1
+#define LWIP_HTTPD_SSI_RAW              1
+#define LWIP_HTTPD_MAX_TAG_NAME_LEN     16
+#define LWIP_HTTPD_MAX_TAG_INSERT_LEN   256
+#define LWIP_HTTPD_DYNAMIC_HEADERS      1
+
 #endif /* LWIP_OPTTEST_FILE */
 
 /* The following defines must be done even in OPTTEST mode: */

@@ -314,6 +314,7 @@ a lot of data that needs to be copied, this should be set high. */
 #define LWIP_HTTPD_MAX_TAG_NAME_LEN     16
 #define LWIP_HTTPD_MAX_TAG_INSERT_LEN   256
 #define LWIP_HTTPD_DYNAMIC_HEADERS      1
+#define HTTPD_FSDATA_FILE               "examples/httpd/examples_fsdata.c"
 
 #endif /* LWIP_OPTTEST_FILE */
 

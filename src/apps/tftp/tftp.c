@@ -60,6 +60,10 @@
 #define TFTP_MAX_PAYLOAD_SIZE 512
 #define TFTP_HEADER_LENGTH    4
 
+/* RFC 2348 blksize option limits */
+#define TFTP_BLKSIZE_MIN      8
+#define TFTP_BLKSIZE_MAX      65464
+
 #define TFTP_RRQ   1
 #define TFTP_WRQ   2
 #define TFTP_DATA  3
@@ -88,6 +92,8 @@ struct tftp_state {
   int timer;
   int last_pkt;
   u16_t blknum;
+  u16_t blksize;          /* Requested block size (RFC 2348), 0 = use default */
+  u16_t blksize_negotiated; /* Negotiated block size from OACK, 0 = not negotiated */
   u8_t retries;
   u8_t mode_write;
   u8_t tftp_mode;
@@ -545,6 +551,34 @@ tftp_put(void* handle, const ip_addr_t *addr, u16_t port, const char* fname, enu
   tftp_state.blknum = 1;
   tftp_state.mode_write = 0; /* We want to send data */
   return send_request(addr, port, TFTP_WRQ, fname, mode_to_string(mode));
+}
+
+/** @ingroup tftp
+ * Set the block size for TFTP transfers (RFC 2348).
+ * Must be called after tftp_init_client() and before tftp_get()/tftp_put().
+ * @param blksize Desired block size (8-65464 bytes)
+ * @return ERR_OK on success
+ */
+err_t
+tftp_client_set_blksize(u16_t blksize)
+{
+  /* Check if TFTP is initialized */
+  if (tftp_state.upcb == NULL) {
+    return ERR_VAL;
+  }
+
+  /* Check if a transfer is already in progress */
+  if (tftp_state.handle != NULL) {
+    return ERR_INPROGRESS;
+  }
+
+  /* Validate blksize range per RFC 2348 */
+  if (blksize < TFTP_BLKSIZE_MIN || blksize > TFTP_BLKSIZE_MAX) {
+    return ERR_VAL;
+  }
+
+  tftp_state.blksize = blksize;
+  return ERR_OK;
 }
 
 #endif /* LWIP_UDP */

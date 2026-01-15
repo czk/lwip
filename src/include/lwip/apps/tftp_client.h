@@ -47,4 +47,16 @@ err_t tftp_init_client(const struct tftp_context* ctx);
 err_t tftp_get(void* handle, const ip_addr_t *addr, u16_t port, const char* fname, enum tftp_transfer_mode mode);
 err_t tftp_put(void* handle, const ip_addr_t *addr, u16_t port, const char* fname, enum tftp_transfer_mode mode);
 
+/**
+ * Set the TFTP block size for transfers (RFC 2348).
+ * Must be called after tftp_init_client() and before tftp_get()/tftp_put().
+ * If the server does not support the blksize option, the client will
+ * fall back to the default 512-byte blocks.
+ *
+ * @param blksize The desired block size (8-65464 bytes per RFC 2348)
+ * @return ERR_OK on success, ERR_VAL if blksize is out of range,
+ *         or other error if called at wrong time
+ */
+err_t tftp_client_set_blksize(u16_t blksize);
+
 #endif /* LWIP_HDR_APPS_TFTP_CLIENT_H */

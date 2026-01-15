@@ -18,6 +18,7 @@
 #include "mqtt/test_mqtt.h"
 #include "api/test_sockets.h"
 #include "ppp/test_pppos.h"
+#include "tftp/test_tftp.h"
 
 #include "lwip/init.h"
 #if !NO_SYS
@@ -97,7 +98,8 @@ int main(void)
     dhcp_suite,
     mdns_suite,
     mqtt_suite,
-    sockets_suite
+    sockets_suite,
+    tftp_suite
 #if PPP_SUPPORT && PPPOS_SUPPORT
     , pppos_suite
 #endif /* PPP_SUPPORT && PPPOS_SUPPORT */

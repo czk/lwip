@@ -40,6 +40,7 @@ static ip4_addr_t test_gw, test_ipaddr, test_netmask;
 static int output_ctr;
 static struct pbuf *last_output_pbuf;
 static u16_t last_output_port;
+static u16_t last_output_src_port;
 
 /* Mock file context */
 static int mock_open_called;
@@ -119,14 +120,16 @@ static const struct tftp_context test_ctx = {
   mock_error
 };
 
+/* Forward declaration */
+static err_t test_netif_linkoutput(struct netif *netif, struct pbuf *p);
+
 static err_t
 test_netif_output(struct netif *netif, struct pbuf *p, const ip4_addr_t *ipaddr)
 {
-  LWIP_UNUSED_ARG(netif);
-  LWIP_UNUSED_ARG(p);
   LWIP_UNUSED_ARG(ipaddr);
-  output_ctr++;
-  return ERR_OK;
+  /* Don't increment output_ctr here, let linkoutput do it */
+  /* Call linkoutput to actually capture the packet */
+  return test_netif_linkoutput(netif, p);
 }
 
 static err_t
@@ -135,6 +138,8 @@ test_netif_linkoutput(struct netif *netif, struct pbuf *p)
   struct ip_hdr *iphdr;
   struct udp_hdr *udphdr;
   u16_t ip_hlen;
+  u16_t tftp_payload_len;
+  u8_t *tftp_payload_ptr;
 
   LWIP_UNUSED_ARG(netif);
   output_ctr++;
@@ -146,15 +151,24 @@ test_netif_linkoutput(struct netif *netif, struct pbuf *p)
   /* Parse UDP header */
   udphdr = (struct udp_hdr *)((u8_t *)p->payload + ip_hlen);
   last_output_port = lwip_ntohs(udphdr->dest);
+  last_output_src_port = lwip_ntohs(udphdr->src);
 
-  /* Capture the TFTP payload */
+  tftp_payload_len = p->tot_len - ip_hlen - sizeof(struct udp_hdr);
+
+  /* Capture the TFTP payload - directly from the pbuf at the right offset */
   if (last_output_pbuf != NULL) {
     pbuf_free(last_output_pbuf);
   }
-  last_output_pbuf = pbuf_alloc(PBUF_RAW, p->tot_len - ip_hlen - sizeof(struct udp_hdr), PBUF_RAM);
+
+  /* Calculate pointer to TFTP payload in the original pbuf */
+  tftp_payload_ptr = (u8_t *)p->payload + ip_hlen + sizeof(struct udp_hdr);
+
+  /* Allocate new pbuf and copy TFTP payload */
+  last_output_pbuf = pbuf_alloc(PBUF_RAW, tftp_payload_len, PBUF_RAM);
   if (last_output_pbuf != NULL) {
-    pbuf_copy_partial(p, last_output_pbuf->payload, last_output_pbuf->len,
-                      ip_hlen + sizeof(struct udp_hdr));
+    /* Direct memory copy from the TFTP payload location */
+    memcpy(last_output_pbuf->payload, tftp_payload_ptr, tftp_payload_len);
+
     captured_request_len = last_output_pbuf->len;
     if (captured_request_len <= sizeof(captured_request)) {
       memcpy(captured_request, last_output_pbuf->payload, captured_request_len);
@@ -326,8 +340,8 @@ create_tftp_packet(u16_t opcode, u16_t block_or_error, const u8_t *data, u16_t d
 
   /* Build UDP header */
   udphdr = (struct udp_hdr *)((u8_t *)p->payload + sizeof(struct ip_hdr));
-  udphdr->src = lwip_htons(12345); /* Arbitrary source port */
-  udphdr->dest = lwip_htons(TFTP_TEST_PORT);
+  udphdr->src = lwip_htons(TFTP_TEST_PORT);  /* Server responds from port 69 */
+  udphdr->dest = lwip_htons(last_output_src_port);  /* To client's ephemeral port */
   udphdr->len = lwip_htons(udp_len);
   udphdr->chksum = 0;
 
@@ -383,8 +397,8 @@ create_oack_packet(u16_t blksize)
 
   /* Build UDP header */
   udphdr = (struct udp_hdr *)((u8_t *)p->payload + sizeof(struct ip_hdr));
-  udphdr->src = lwip_htons(12345);
-  udphdr->dest = lwip_htons(TFTP_TEST_PORT);
+  udphdr->src = lwip_htons(TFTP_TEST_PORT);  /* Server responds from port 69 */
+  udphdr->dest = lwip_htons(last_output_src_port);  /* To client's ephemeral port */
   udphdr->len = lwip_htons(udp_len);
   udphdr->chksum = 0;
 
@@ -414,7 +428,7 @@ START_TEST(test_tftp_set_blksize_before_init)
 
   /* Call set_blksize before init - should fail */
   err = tftp_client_set_blksize(1024);
-  fail_unless(err != ERR_OK, "set_blksize should fail before init");
+  fail_unless(err != ERR_OK);
 }
 END_TEST
 
@@ -427,11 +441,11 @@ START_TEST(test_tftp_set_blksize_after_init)
   LWIP_UNUSED_ARG(_i);
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   /* Call set_blksize after init - should succeed */
   err = tftp_client_set_blksize(1024);
-  fail_unless(err == ERR_OK, "set_blksize should succeed after init");
+  fail_unless(err == ERR_OK);
 
   tftp_cleanup();
 }
@@ -446,10 +460,10 @@ START_TEST(test_tftp_set_blksize_minimum)
   LWIP_UNUSED_ARG(_i);
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(TFTP_MIN_BLKSIZE);
-  fail_unless(err == ERR_OK, "set_blksize should accept minimum blocksize (8)");
+  fail_unless(err == ERR_OK);
 
   tftp_cleanup();
 }
@@ -464,10 +478,10 @@ START_TEST(test_tftp_set_blksize_maximum)
   LWIP_UNUSED_ARG(_i);
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(TFTP_MAX_BLKSIZE);
-  fail_unless(err == ERR_OK, "set_blksize should accept maximum blocksize (65464)");
+  fail_unless(err == ERR_OK);
 
   tftp_cleanup();
 }
@@ -482,11 +496,11 @@ START_TEST(test_tftp_set_blksize_ethernet_optimal)
   LWIP_UNUSED_ARG(_i);
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   /* 1500 MTU - 20 IP header - 8 UDP header - 4 TFTP header = 1468 */
   err = tftp_client_set_blksize(1468);
-  fail_unless(err == ERR_OK, "set_blksize should accept 1468 (Ethernet optimal)");
+  fail_unless(err == ERR_OK);
 
   tftp_cleanup();
 }
@@ -501,13 +515,13 @@ START_TEST(test_tftp_set_blksize_below_minimum)
   LWIP_UNUSED_ARG(_i);
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(7); /* Below minimum of 8 */
-  fail_unless(err != ERR_OK, "set_blksize should reject blocksize below minimum");
+  fail_unless(err != ERR_OK);
 
   err = tftp_client_set_blksize(0);
-  fail_unless(err != ERR_OK, "set_blksize should reject blocksize of 0");
+  fail_unless(err != ERR_OK);
 
   tftp_cleanup();
 }
@@ -522,10 +536,10 @@ START_TEST(test_tftp_set_blksize_above_maximum)
   LWIP_UNUSED_ARG(_i);
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(65465); /* Above maximum of 65464 */
-  fail_unless(err != ERR_OK, "set_blksize should reject blocksize above maximum");
+  fail_unless(err != ERR_OK);
 
   tftp_cleanup();
 }
@@ -541,16 +555,16 @@ START_TEST(test_tftp_set_blksize_during_transfer)
   LWIP_UNUSED_ARG(_i);
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   /* Start a transfer */
   IP_ADDR4(&server_addr, 192, 168, 0, 254);
   err = tftp_get((void *)0x12345678, &server_addr, TFTP_TEST_PORT, "test.txt", TFTP_MODE_OCTET);
-  fail_unless(err == ERR_OK, "tftp_get failed");
+  fail_unless(err == ERR_OK);
 
   /* Try to set blocksize during transfer - should fail */
   err = tftp_client_set_blksize(1024);
-  fail_unless(err != ERR_OK, "set_blksize should fail during transfer");
+  fail_unless(err != ERR_OK);
 
   tftp_cleanup();
 }
@@ -573,22 +587,21 @@ START_TEST(test_tftp_rrq_includes_blksize_option)
   LWIP_UNUSED_ARG(_i);
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(1024);
-  fail_unless(err == ERR_OK, "set_blksize failed");
+  fail_unless(err == ERR_OK);
 
   IP_ADDR4(&server_addr, 192, 168, 0, 254);
   err = tftp_get((void *)0x12345678, &server_addr, TFTP_TEST_PORT, "test.txt", TFTP_MODE_OCTET);
-  fail_unless(err == ERR_OK, "tftp_get failed");
+  fail_unless(err == ERR_OK);
 
   /* Verify the request was sent */
-  fail_unless(output_ctr > 0, "No packet was sent");
+  fail_unless(output_ctr > 0);
 
   /* Verify the request contains blksize option */
-  fail_unless(find_option_in_request(captured_request, captured_request_len, "blksize", blksize_value, sizeof(blksize_value)),
-              "RRQ should contain blksize option");
-  fail_unless(strcmp(blksize_value, "1024") == 0, "blksize value should be 1024");
+  fail_unless(find_option_in_request(captured_request, captured_request_len, "blksize", blksize_value, sizeof(blksize_value)));
+  fail_unless(strcmp(blksize_value, "1024") == 0);
 
   tftp_cleanup();
 }
@@ -605,20 +618,19 @@ START_TEST(test_tftp_rrq_no_blksize_when_default)
   LWIP_UNUSED_ARG(_i);
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   /* Do NOT set blksize - use default 512 */
 
   IP_ADDR4(&server_addr, 192, 168, 0, 254);
   err = tftp_get((void *)0x12345678, &server_addr, TFTP_TEST_PORT, "test.txt", TFTP_MODE_OCTET);
-  fail_unless(err == ERR_OK, "tftp_get failed");
+  fail_unless(err == ERR_OK);
 
   /* Verify the request was sent */
-  fail_unless(output_ctr > 0, "No packet was sent");
+  fail_unless(output_ctr > 0);
 
   /* Verify the request does NOT contain blksize option when using default */
-  fail_unless(!find_option_in_request(captured_request, captured_request_len, "blksize", blksize_value, sizeof(blksize_value)),
-              "RRQ should NOT contain blksize option when using default");
+  fail_unless(!find_option_in_request(captured_request, captured_request_len, "blksize", blksize_value, sizeof(blksize_value)));
 
   tftp_cleanup();
 }
@@ -635,30 +647,31 @@ START_TEST(test_tftp_client_handles_oack)
   LWIP_UNUSED_ARG(_i);
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(1024);
-  fail_unless(err == ERR_OK, "set_blksize failed");
+  fail_unless(err == ERR_OK);
 
   IP_ADDR4(&server_addr, 192, 168, 0, 254);
   err = tftp_get((void *)0x12345678, &server_addr, TFTP_TEST_PORT, "test.txt", TFTP_MODE_OCTET);
-  fail_unless(err == ERR_OK, "tftp_get failed");
+  fail_unless(err == ERR_OK);
 
   /* Simulate server OACK response with blksize=1024 */
   p = create_oack_packet(1024);
-  fail_unless(p != NULL, "Failed to create OACK packet");
+  fail_unless(p != NULL);
 
   output_ctr = 0;
+  captured_request_len = 0; /* Clear before test */
   err = ip4_input(p, &test_netif);
-  fail_unless(err == ERR_OK, "ip4_input failed");
+  fail_unless(err == ERR_OK);
 
   /* Client should send ACK for OACK (block 0) */
-  fail_unless(output_ctr > 0, "Client should respond to OACK");
+  fail_unless(output_ctr > 0);
 
   /* Verify ACK was sent (opcode=4, block=0) */
-  fail_unless(captured_request_len >= 4, "Response too short for ACK");
-  fail_unless(captured_request[0] == 0 && captured_request[1] == TFTP_ACK, "Response should be ACK");
-  fail_unless(captured_request[2] == 0 && captured_request[3] == 0, "ACK should be for block 0");
+  fail_unless(captured_request_len >= 4);
+  fail_unless(captured_request[0] == 0 && captured_request[1] == TFTP_ACK);
+  fail_unless(captured_request[2] == 0 && captured_request[3] == 0);
 
   tftp_cleanup();
 }
@@ -675,27 +688,27 @@ START_TEST(test_tftp_client_handles_oack_smaller_blksize)
   LWIP_UNUSED_ARG(_i);
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   /* Request 1024, server will negotiate down to 512 */
   err = tftp_client_set_blksize(1024);
-  fail_unless(err == ERR_OK, "set_blksize failed");
+  fail_unless(err == ERR_OK);
 
   IP_ADDR4(&server_addr, 192, 168, 0, 254);
   err = tftp_get((void *)0x12345678, &server_addr, TFTP_TEST_PORT, "test.txt", TFTP_MODE_OCTET);
-  fail_unless(err == ERR_OK, "tftp_get failed");
+  fail_unless(err == ERR_OK);
 
   /* Simulate server OACK response with blksize=512 (smaller than requested) */
   p = create_oack_packet(512);
-  fail_unless(p != NULL, "Failed to create OACK packet");
+  fail_unless(p != NULL);
 
   output_ctr = 0;
   err = ip4_input(p, &test_netif);
-  fail_unless(err == ERR_OK, "ip4_input failed");
+  fail_unless(err == ERR_OK);
 
   /* Client should accept the negotiated smaller blksize */
-  fail_unless(output_ctr > 0, "Client should respond to OACK");
-  fail_unless(captured_request[0] == 0 && captured_request[1] == TFTP_ACK, "Response should be ACK");
+  fail_unless(output_ctr > 0);
+  fail_unless(captured_request[0] == 0 && captured_request[1] == TFTP_ACK);
 
   tftp_cleanup();
 }
@@ -716,29 +729,29 @@ START_TEST(test_tftp_client_fallback_to_default_blksize)
   memset(test_data, 'A', sizeof(test_data));
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(1024);
-  fail_unless(err == ERR_OK, "set_blksize failed");
+  fail_unless(err == ERR_OK);
 
   IP_ADDR4(&server_addr, 192, 168, 0, 254);
   err = tftp_get((void *)0x12345678, &server_addr, TFTP_TEST_PORT, "test.txt", TFTP_MODE_OCTET);
-  fail_unless(err == ERR_OK, "tftp_get failed");
+  fail_unless(err == ERR_OK);
 
   /* Server ignores blksize option and sends DATA directly (512 bytes) */
   p = create_tftp_packet(TFTP_DATA, 1, test_data, 512);
-  fail_unless(p != NULL, "Failed to create DATA packet");
+  fail_unless(p != NULL);
 
   output_ctr = 0;
   mock_write_called = 0;
   err = ip4_input(p, &test_netif);
-  fail_unless(err == ERR_OK, "ip4_input failed");
+  fail_unless(err == ERR_OK);
 
   /* Client should accept the data and send ACK */
-  fail_unless(mock_write_called > 0, "Client should write received data");
-  fail_unless(output_ctr > 0, "Client should send ACK");
-  fail_unless(captured_request[0] == 0 && captured_request[1] == TFTP_ACK, "Response should be ACK");
-  fail_unless(captured_request[2] == 0 && captured_request[3] == 1, "ACK should be for block 1");
+  fail_unless(mock_write_called > 0);
+  fail_unless(output_ctr > 0);
+  fail_unless(captured_request[0] == 0 && captured_request[1] == TFTP_ACK);
+  fail_unless(captured_request[2] == 0 && captured_request[3] == 1);
 
   tftp_cleanup();
 }
@@ -755,18 +768,18 @@ START_TEST(test_tftp_client_rejects_invalid_oack_blksize_small)
   LWIP_UNUSED_ARG(_i);
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(1024);
-  fail_unless(err == ERR_OK, "set_blksize failed");
+  fail_unless(err == ERR_OK);
 
   IP_ADDR4(&server_addr, 192, 168, 0, 254);
   err = tftp_get((void *)0x12345678, &server_addr, TFTP_TEST_PORT, "test.txt", TFTP_MODE_OCTET);
-  fail_unless(err == ERR_OK, "tftp_get failed");
+  fail_unless(err == ERR_OK);
 
   /* Simulate server OACK response with invalid blksize=4 (below minimum) */
   p = create_oack_packet(4);
-  fail_unless(p != NULL, "Failed to create OACK packet");
+  fail_unless(p != NULL);
 
   output_ctr = 0;
   err = ip4_input(p, &test_netif);
@@ -789,18 +802,18 @@ START_TEST(test_tftp_client_rejects_oack_larger_than_requested)
   LWIP_UNUSED_ARG(_i);
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(1024);
-  fail_unless(err == ERR_OK, "set_blksize failed");
+  fail_unless(err == ERR_OK);
 
   IP_ADDR4(&server_addr, 192, 168, 0, 254);
   err = tftp_get((void *)0x12345678, &server_addr, TFTP_TEST_PORT, "test.txt", TFTP_MODE_OCTET);
-  fail_unless(err == ERR_OK, "tftp_get failed");
+  fail_unless(err == ERR_OK);
 
   /* Simulate server OACK response with blksize=2048 (larger than requested 1024) */
   p = create_oack_packet(2048);
-  fail_unless(p != NULL, "Failed to create OACK packet");
+  fail_unless(p != NULL);
 
   output_ctr = 0;
   err = ip4_input(p, &test_netif);
@@ -833,22 +846,21 @@ START_TEST(test_tftp_wrq_includes_blksize_option)
   mock_read_data_len = 1024;
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(1024);
-  fail_unless(err == ERR_OK, "set_blksize failed");
+  fail_unless(err == ERR_OK);
 
   IP_ADDR4(&server_addr, 192, 168, 0, 254);
   err = tftp_put((void *)0x12345678, &server_addr, TFTP_TEST_PORT, "test.txt", TFTP_MODE_OCTET);
-  fail_unless(err == ERR_OK, "tftp_put failed");
+  fail_unless(err == ERR_OK);
 
   /* Verify the request was sent */
-  fail_unless(output_ctr > 0, "No packet was sent");
+  fail_unless(output_ctr > 0);
 
   /* Verify the request contains blksize option */
-  fail_unless(find_option_in_request(captured_request, captured_request_len, "blksize", blksize_value, sizeof(blksize_value)),
-              "WRQ should contain blksize option");
-  fail_unless(strcmp(blksize_value, "1024") == 0, "blksize value should be 1024");
+  fail_unless(find_option_in_request(captured_request, captured_request_len, "blksize", blksize_value, sizeof(blksize_value)));
+  fail_unless(strcmp(blksize_value, "1024") == 0);
 
   tftp_cleanup();
 }
@@ -869,35 +881,35 @@ START_TEST(test_tftp_wrq_sends_data_with_negotiated_blksize)
   mock_read_data_len = 2048;
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(1024);
-  fail_unless(err == ERR_OK, "set_blksize failed");
+  fail_unless(err == ERR_OK);
 
   IP_ADDR4(&server_addr, 192, 168, 0, 254);
   err = tftp_put((void *)0x12345678, &server_addr, TFTP_TEST_PORT, "test.txt", TFTP_MODE_OCTET);
-  fail_unless(err == ERR_OK, "tftp_put failed");
+  fail_unless(err == ERR_OK);
 
   /* Simulate server OACK response with blksize=1024 */
   p = create_oack_packet(1024);
-  fail_unless(p != NULL, "Failed to create OACK packet");
+  fail_unless(p != NULL);
 
   output_ctr = 0;
   mock_read_called = 0;
   err = ip4_input(p, &test_netif);
-  fail_unless(err == ERR_OK, "ip4_input failed");
+  fail_unless(err == ERR_OK);
 
   /* Client should send DATA block 1 with negotiated blksize */
-  fail_unless(output_ctr > 0, "Client should send DATA after OACK");
-  fail_unless(mock_read_called > 0, "Client should read data to send");
+  fail_unless(output_ctr > 0);
+  fail_unless(mock_read_called > 0);
 
   /* Verify DATA packet was sent */
-  fail_unless(captured_request_len >= 4, "Response too short");
-  fail_unless(captured_request[0] == 0 && captured_request[1] == TFTP_DATA, "Response should be DATA");
-  fail_unless(captured_request[2] == 0 && captured_request[3] == 1, "DATA should be block 1");
+  fail_unless(captured_request_len >= 4);
+  fail_unless(captured_request[0] == 0 && captured_request[1] == TFTP_DATA);
+  fail_unless(captured_request[2] == 0 && captured_request[3] == 1);
 
   /* Verify data size is negotiated blksize (1024) + header (4) */
-  fail_unless(captured_request_len == 1024 + 4, "DATA packet should be 1024 bytes + header");
+  fail_unless(captured_request_len == 1024 + 4);
 
   tftp_cleanup();
 }
@@ -918,34 +930,34 @@ START_TEST(test_tftp_wrq_fallback_to_default_blksize)
   mock_read_data_len = 1024;
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(1024);
-  fail_unless(err == ERR_OK, "set_blksize failed");
+  fail_unless(err == ERR_OK);
 
   IP_ADDR4(&server_addr, 192, 168, 0, 254);
   err = tftp_put((void *)0x12345678, &server_addr, TFTP_TEST_PORT, "test.txt", TFTP_MODE_OCTET);
-  fail_unless(err == ERR_OK, "tftp_put failed");
+  fail_unless(err == ERR_OK);
 
   /* Server ignores blksize option and sends ACK 0 directly */
   p = create_tftp_packet(TFTP_ACK, 0, NULL, 0);
-  fail_unless(p != NULL, "Failed to create ACK packet");
+  fail_unless(p != NULL);
 
   output_ctr = 0;
   mock_read_called = 0;
   err = ip4_input(p, &test_netif);
-  fail_unless(err == ERR_OK, "ip4_input failed");
+  fail_unless(err == ERR_OK);
 
   /* Client should fall back to default blksize and send DATA */
-  fail_unless(output_ctr > 0, "Client should send DATA after ACK");
-  fail_unless(mock_read_called > 0, "Client should read data to send");
+  fail_unless(output_ctr > 0);
+  fail_unless(mock_read_called > 0);
 
   /* Verify DATA packet was sent with default blksize (512) */
-  fail_unless(captured_request_len >= 4, "Response too short");
-  fail_unless(captured_request[0] == 0 && captured_request[1] == TFTP_DATA, "Response should be DATA");
+  fail_unless(captured_request_len >= 4);
+  fail_unless(captured_request[0] == 0 && captured_request[1] == TFTP_DATA);
 
   /* Data size should be 512 (default) + header (4) */
-  fail_unless(captured_request_len == 512 + 4, "DATA packet should be 512 bytes + header (fallback)");
+  fail_unless(captured_request_len == 512 + 4);
 
   tftp_cleanup();
 }
@@ -969,27 +981,26 @@ START_TEST(test_tftp_blksize_reset_after_cleanup)
 
   /* First session with blksize=1024 */
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(1024);
-  fail_unless(err == ERR_OK, "set_blksize failed");
+  fail_unless(err == ERR_OK);
 
   tftp_cleanup();
 
   /* Second session without setting blksize */
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed (2nd)");
+  fail_unless(err == ERR_OK);
 
   /* Do NOT set blksize - should be default */
 
   IP_ADDR4(&server_addr, 192, 168, 0, 254);
   output_ctr = 0;
   err = tftp_get((void *)0x12345678, &server_addr, TFTP_TEST_PORT, "test.txt", TFTP_MODE_OCTET);
-  fail_unless(err == ERR_OK, "tftp_get failed");
+  fail_unless(err == ERR_OK);
 
   /* Verify the request does NOT contain blksize option (reset to default) */
-  fail_unless(!find_option_in_request(captured_request, captured_request_len, "blksize", blksize_value, sizeof(blksize_value)),
-              "RRQ should NOT contain blksize option after cleanup/reinit");
+  fail_unless(!find_option_in_request(captured_request, captured_request_len, "blksize", blksize_value, sizeof(blksize_value)));
 
   tftp_cleanup();
 }
@@ -1006,26 +1017,25 @@ START_TEST(test_tftp_set_blksize_multiple_calls)
   LWIP_UNUSED_ARG(_i);
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   /* Set different blocksizes multiple times */
   err = tftp_client_set_blksize(512);
-  fail_unless(err == ERR_OK, "set_blksize(512) failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(1024);
-  fail_unless(err == ERR_OK, "set_blksize(1024) failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(1468);
-  fail_unless(err == ERR_OK, "set_blksize(1468) failed");
+  fail_unless(err == ERR_OK);
 
   IP_ADDR4(&server_addr, 192, 168, 0, 254);
   err = tftp_get((void *)0x12345678, &server_addr, TFTP_TEST_PORT, "test.txt", TFTP_MODE_OCTET);
-  fail_unless(err == ERR_OK, "tftp_get failed");
+  fail_unless(err == ERR_OK);
 
   /* Verify the request contains last blksize value */
-  fail_unless(find_option_in_request(captured_request, captured_request_len, "blksize", blksize_value, sizeof(blksize_value)),
-              "RRQ should contain blksize option");
-  fail_unless(strcmp(blksize_value, "1468") == 0, "blksize value should be 1468 (last set value)");
+  fail_unless(find_option_in_request(captured_request, captured_request_len, "blksize", blksize_value, sizeof(blksize_value)));
+  fail_unless(strcmp(blksize_value, "1468") == 0);
 
   tftp_cleanup();
 }
@@ -1045,25 +1055,25 @@ START_TEST(test_tftp_receive_oversized_data_block)
   memset(test_data, 'E', sizeof(test_data));
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   /* Request 1024 byte blocks */
   err = tftp_client_set_blksize(1024);
-  fail_unless(err == ERR_OK, "set_blksize failed");
+  fail_unless(err == ERR_OK);
 
   IP_ADDR4(&server_addr, 192, 168, 0, 254);
   err = tftp_get((void *)0x12345678, &server_addr, TFTP_TEST_PORT, "test.txt", TFTP_MODE_OCTET);
-  fail_unless(err == ERR_OK, "tftp_get failed");
+  fail_unless(err == ERR_OK);
 
   /* Server sends OACK with 1024 */
   p = create_oack_packet(1024);
-  fail_unless(p != NULL, "Failed to create OACK packet");
+  fail_unless(p != NULL);
   err = ip4_input(p, &test_netif);
-  fail_unless(err == ERR_OK, "ip4_input failed for OACK");
+  fail_unless(err == ERR_OK);
 
   /* Server sends DATA block larger than negotiated (2048 bytes) */
   p = create_tftp_packet(TFTP_DATA, 1, test_data, 2048);
-  fail_unless(p != NULL, "Failed to create DATA packet");
+  fail_unless(p != NULL);
 
   mock_error_called = 0;
   err = ip4_input(p, &test_netif);
@@ -1090,33 +1100,33 @@ START_TEST(test_tftp_final_block_detection_custom_blksize)
   memset(test_data, 'F', sizeof(test_data));
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(1024);
-  fail_unless(err == ERR_OK, "set_blksize failed");
+  fail_unless(err == ERR_OK);
 
   IP_ADDR4(&server_addr, 192, 168, 0, 254);
   err = tftp_get((void *)0x12345678, &server_addr, TFTP_TEST_PORT, "test.txt", TFTP_MODE_OCTET);
-  fail_unless(err == ERR_OK, "tftp_get failed");
+  fail_unless(err == ERR_OK);
 
   /* Server sends OACK with 1024 */
   p = create_oack_packet(1024);
-  fail_unless(p != NULL, "Failed to create OACK packet");
+  fail_unless(p != NULL);
   err = ip4_input(p, &test_netif);
-  fail_unless(err == ERR_OK, "ip4_input failed for OACK");
+  fail_unless(err == ERR_OK);
 
   /* Server sends final DATA block (smaller than 1024) */
   p = create_tftp_packet(TFTP_DATA, 1, test_data, 500);
-  fail_unless(p != NULL, "Failed to create DATA packet");
+  fail_unless(p != NULL);
 
   mock_write_called = 0;
   mock_close_called = 0;
   err = ip4_input(p, &test_netif);
-  fail_unless(err == ERR_OK, "ip4_input failed for DATA");
+  fail_unless(err == ERR_OK);
 
   /* Client should recognize this as final block and close */
-  fail_unless(mock_write_called > 0, "Client should write received data");
-  fail_unless(mock_close_called > 0, "Client should close after final block");
+  fail_unless(mock_write_called > 0);
+  fail_unless(mock_close_called > 0);
 
   tftp_cleanup();
 }
@@ -1137,35 +1147,35 @@ START_TEST(test_tftp_zero_length_final_block)
   memset(test_data, 'G', sizeof(test_data));
 
   err = tftp_init_client(&test_ctx);
-  fail_unless(err == ERR_OK, "tftp_init_client failed");
+  fail_unless(err == ERR_OK);
 
   err = tftp_client_set_blksize(1024);
-  fail_unless(err == ERR_OK, "set_blksize failed");
+  fail_unless(err == ERR_OK);
 
   IP_ADDR4(&server_addr, 192, 168, 0, 254);
   err = tftp_get((void *)0x12345678, &server_addr, TFTP_TEST_PORT, "test.txt", TFTP_MODE_OCTET);
-  fail_unless(err == ERR_OK, "tftp_get failed");
+  fail_unless(err == ERR_OK);
 
   /* Server sends OACK with 1024 */
   p = create_oack_packet(1024);
-  fail_unless(p != NULL, "Failed to create OACK packet");
+  fail_unless(p != NULL);
   err = ip4_input(p, &test_netif);
 
   /* Server sends full DATA block 1 */
   p = create_tftp_packet(TFTP_DATA, 1, test_data, 1024);
-  fail_unless(p != NULL, "Failed to create DATA packet");
+  fail_unless(p != NULL);
   mock_close_called = 0;
   err = ip4_input(p, &test_netif);
-  fail_unless(mock_close_called == 0, "Should not close after full block");
+  fail_unless(mock_close_called == 0);
 
   /* Server sends zero-length final DATA block 2 */
   p = create_tftp_packet(TFTP_DATA, 2, NULL, 0);
-  fail_unless(p != NULL, "Failed to create zero-length DATA packet");
+  fail_unless(p != NULL);
   err = ip4_input(p, &test_netif);
-  fail_unless(err == ERR_OK, "ip4_input failed for zero-length DATA");
+  fail_unless(err == ERR_OK);
 
   /* Client should recognize zero-length as final block and close */
-  fail_unless(mock_close_called > 0, "Client should close after zero-length final block");
+  fail_unless(mock_close_called > 0);
 
   tftp_cleanup();
 }

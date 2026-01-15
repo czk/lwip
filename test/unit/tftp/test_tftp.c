@@ -52,7 +52,7 @@ static int mock_read_data_len;
 static int mock_read_offset;
 
 /* Captured request data */
-static u8_t captured_request[1024];
+static u8_t captured_request[TFTP_MAX_BLKSIZE + TFTP_HEADER_LENGTH];  /* 65468 bytes - supports max blocksize */
 static u16_t captured_request_len;
 
 /* Helper functions */

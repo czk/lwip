@@ -59,4 +59,12 @@ err_t tftp_put(void* handle, const ip_addr_t *addr, u16_t port, const char* fnam
  */
 err_t tftp_client_set_blksize(u16_t blksize);
 
+/**
+ * Get the current TFTP block size setting.
+ * Returns the configured block size, or the default (512) if not set.
+ *
+ * @return Current block size in bytes
+ */
+u16_t tftp_client_get_blksize(void);
+
 #endif /* LWIP_HDR_APPS_TFTP_CLIENT_H */

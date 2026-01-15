@@ -102,6 +102,9 @@ struct tftp_state {
 
 static struct tftp_state tftp_state;
 
+/* Configured blksize - persists even when TFTP client is not initialized */
+static u16_t tftp_configured_blksize = 0;
+
 static void tftp_tmr(void *arg);
 
 static void
@@ -704,23 +707,38 @@ tftp_put(void* handle, const ip_addr_t *addr, u16_t port, const char* fname, enu
 err_t
 tftp_client_set_blksize(u16_t blksize)
 {
-  /* Check if TFTP is initialized */
-  if (tftp_state.upcb == NULL) {
-    return ERR_VAL;
-  }
-
-  /* Check if a transfer is already in progress */
-  if (tftp_state.handle != NULL) {
-    return ERR_INPROGRESS;
-  }
-
   /* Validate blksize range per RFC 2348 */
   if (blksize < TFTP_BLKSIZE_MIN || blksize > TFTP_BLKSIZE_MAX) {
     return ERR_VAL;
   }
 
-  tftp_state.blksize = blksize;
+  /* Always save to configured blksize */
+  tftp_configured_blksize = blksize;
+
+  /* Also update tftp_state if initialized and no transfer in progress */
+  if (tftp_state.upcb != NULL && tftp_state.handle == NULL) {
+    tftp_state.blksize = blksize;
+  }
+
   return ERR_OK;
+}
+
+/** @ingroup tftp
+ * Get the current TFTP block size setting.
+ * @return Current block size in bytes (default 512 if not configured)
+ */
+u16_t
+tftp_client_get_blksize(void)
+{
+  /* Return configured blksize if set */
+  if (tftp_configured_blksize != 0) {
+    return tftp_configured_blksize;
+  }
+  /* Fall back to tftp_state.blksize if set */
+  if (tftp_state.blksize != 0) {
+    return tftp_state.blksize;
+  }
+  return TFTP_MAX_PAYLOAD_SIZE;
 }
 
 #endif /* LWIP_UDP */

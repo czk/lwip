@@ -311,6 +311,7 @@ a lot of data that needs to be copied, this should be set high. */
 /* ---------- HTTPD options ---------- */
 #define LWIP_HTTPD_SSI                  1
 #define LWIP_HTTPD_SSI_RAW              1
+#define LWIP_HTTPD_CGI                  1
 #define LWIP_HTTPD_MAX_TAG_NAME_LEN     16
 #define LWIP_HTTPD_MAX_TAG_INSERT_LEN   256
 #define LWIP_HTTPD_DYNAMIC_HEADERS      1

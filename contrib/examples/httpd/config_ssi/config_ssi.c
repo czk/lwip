@@ -4,6 +4,7 @@
  *
  * This module provides SSI handlers to display lwIP configuration
  * values on web pages, including TFTP blksize and other settings.
+ * Also provides CGI handlers for modifying configuration values.
  */
 
 #include "lwip/opt.h"
@@ -14,13 +15,15 @@
 #include "lwip/netif.h"
 #include "lwip/init.h"
 #include "lwip/apps/tftp_opts.h"
+#include "lwip/apps/tftp_client.h"
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #if LWIP_HTTPD_SSI
 
-/* TFTP block size - hardcoded in tftp.c as TFTP_MAX_PAYLOAD_SIZE */
+/* TFTP block size - default value */
 #ifndef TFTP_MAX_PAYLOAD_SIZE
 #define TFTP_MAX_PAYLOAD_SIZE 512
 #endif
@@ -35,7 +38,7 @@ config_ssi_handler(const char *ssi_tag_name, char *pcInsert, int iInsertLen)
 
   /* TFTP Configuration */
   if (!strcmp(ssi_tag_name, "tftp_blk")) {
-    printed = snprintf(pcInsert, iInsertLen, "%d bytes", TFTP_MAX_PAYLOAD_SIZE);
+    printed = snprintf(pcInsert, iInsertLen, "%d", tftp_client_get_blksize());
   }
   else if (!strcmp(ssi_tag_name, "tftp_port")) {
     printed = snprintf(pcInsert, iInsertLen, "%d", TFTP_PORT);
@@ -114,10 +117,46 @@ config_ssi_handler(const char *ssi_tag_name, char *pcInsert, int iInsertLen)
   return (u16_t)printed;
 }
 
+#if LWIP_HTTPD_CGI
+
+/**
+ * CGI handler for setting TFTP block size
+ * URL: /set_blksize?blksize=<value>
+ */
+static const char *
+cgi_set_blksize(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
+{
+  int i;
+
+  LWIP_UNUSED_ARG(iIndex);
+
+  for (i = 0; i < iNumParams; i++) {
+    if (!strcmp(pcParam[i], "blksize")) {
+      int blksize = atoi(pcValue[i]);
+      if (blksize >= 8 && blksize <= 65464) {
+        tftp_client_set_blksize((u16_t)blksize);
+      }
+      break;
+    }
+  }
+
+  /* Return to configuration page */
+  return "/config.shtml";
+}
+
+static const tCGI config_cgi_handlers[] = {
+  { "/set_blksize", cgi_set_blksize }
+};
+
+#endif /* LWIP_HTTPD_CGI */
+
 void
 config_ssi_init(void)
 {
   http_set_ssi_handler(config_ssi_handler, NULL, 0);
+#if LWIP_HTTPD_CGI
+  http_set_cgi_handlers(config_cgi_handlers, LWIP_ARRAYSIZE(config_cgi_handlers));
+#endif
 }
 
 #endif /* LWIP_HTTPD_SSI */

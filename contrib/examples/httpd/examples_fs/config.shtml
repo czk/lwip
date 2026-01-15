@@ -84,6 +84,92 @@
       font-size: 14px;
       color: #333;
     }
+    /* Editable field styles */
+    .field-input {
+      flex: 1;
+      display: flex;
+      gap: 10px;
+    }
+    .field-input input {
+      flex: 1;
+      padding: 10px 15px;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #333;
+      max-width: 150px;
+    }
+    .field-input input:focus {
+      outline: none;
+      border-color: #f57c00;
+    }
+    .field-input button {
+      padding: 10px 20px;
+      background: #f57c00;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .field-input button:hover {
+      background: #e65100;
+    }
+    .field-unit {
+      color: #999;
+      font-size: 13px;
+      margin-left: 5px;
+    }
+    /* Editable value with pencil icon */
+    .editable-value {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .value-display {
+      background: #f5f5f5;
+      padding: 10px 15px;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #333;
+      min-width: 80px;
+    }
+    .edit-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 5px;
+      color: #999;
+      transition: color 0.2s;
+    }
+    .edit-btn:hover {
+      color: #f57c00;
+    }
+    .edit-form {
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+    .edit-form.active {
+      display: flex;
+    }
+    .view-mode.hidden {
+      display: none;
+    }
+    .cancel-btn {
+      padding: 10px 15px;
+      background: #e0e0e0;
+      color: #666;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .cancel-btn:hover {
+      background: #d0d0d0;
+    }
     /* Footer */
     .footer {
       margin-top: 40px;
@@ -133,7 +219,23 @@
 
       <div class="config-field">
         <div class="field-label">Block Size</div>
-        <div class="field-value"><!--#tftp_blk--></div>
+        <div class="editable-value">
+          <!-- View Mode -->
+          <div class="view-mode" id="blksize-view">
+            <span class="value-display"><!--#tftp_blk--></span>
+            <span class="field-unit">bytes</span>
+            <button type="button" class="edit-btn" onclick="showEdit('blksize')" title="Edit">
+              &#9998;
+            </button>
+          </div>
+          <!-- Edit Mode -->
+          <form action="/set_blksize" method="get" class="edit-form" id="blksize-edit">
+            <input type="number" name="blksize" value="<!--#tftp_blk-->" min="8" max="65464" />
+            <span class="field-unit">bytes</span>
+            <button type="submit">Apply</button>
+            <button type="button" class="cancel-btn" onclick="hideEdit('blksize')">Cancel</button>
+          </form>
+        </div>
       </div>
 
       <div class="config-field">
@@ -156,5 +258,16 @@
       </div>
     </main>
   </div>
+  <script>
+    function showEdit(field) {
+      document.getElementById(field + '-view').classList.add('hidden');
+      document.getElementById(field + '-edit').classList.add('active');
+      document.getElementById(field + '-edit').querySelector('input').focus();
+    }
+    function hideEdit(field) {
+      document.getElementById(field + '-view').classList.remove('hidden');
+      document.getElementById(field + '-edit').classList.remove('active');
+    }
+  </script>
 </body>
 </html>

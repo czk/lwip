@@ -29,7 +29,7 @@
 # Author: Adam Dunkels <adam@sics.se>
 #
 
-all compile: example_app makefsdata
+all compile: simple_ont makefsdata
 .PHONY: all
 
 LWIPDIR=../../../../src
@@ -44,7 +44,7 @@ CFLAGS+=$(TESTFLAGS)
 MAKEFSDATAOBJS=$(notdir $(MAKEFSDATAFILES:.c=.o))
 
 clean:
-	rm -f *.o $(LWIPLIBCOMMON) $(APPLIB) example_app makefsdata *.s .depend* *.core core
+	rm -f *.o $(LWIPLIBCOMMON) $(APPLIB) simple_ont makefsdata *.s .depend* *.core core
 
 depend dep: .depend
 
@@ -53,8 +53,8 @@ include .depend
 .depend: $(CONTRIBDIR)/examples/example_app/test.c default_netif.c $(LWIPFILES) $(APPFILES) $(MAKEFSDATAFILES)
 	$(CCDEP) $(CFLAGS) -MM $^ > .depend || rm -f .depend
 
-example_app: .depend $(LWIPLIBCOMMON) $(APPLIB) default_netif.o test.o
-	$(CC) $(CFLAGS) -o example_app test.o default_netif.o -Wl,--start-group $(APPLIB) $(LWIPLIBCOMMON) -Wl,--end-group $(LDFLAGS)
+simple_ont: .depend $(LWIPLIBCOMMON) $(APPLIB) default_netif.o test.o
+	$(CC) $(CFLAGS) -o simple_ont test.o default_netif.o -Wl,--start-group $(APPLIB) $(LWIPLIBCOMMON) -Wl,--end-group $(LDFLAGS)
 
 makefsdata: .depend $(MAKEFSDATAOBJS)
 	$(CC) $(CFLAGS) -o makefsdata $(MAKEFSDATAOBJS)

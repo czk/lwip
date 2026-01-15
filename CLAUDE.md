@@ -159,6 +159,41 @@ Enable debug output by defining debug flags in `lwipopts.h`:
 - `src/core/tcp.c`, `tcp_in.c`, `tcp_out.c` - TCP implementation
 - `src/api/tcpip.c` - Main thread and message passing for threaded mode
 
+## HTTP Frontend Development
+
+### Modifying Web Pages
+
+The HTTP server's frontend pages are located in `contrib/examples/httpd/examples_fs/`. After modifying any HTML/SHTML files, you **must** regenerate the C source file.
+
+### Compiling HTML to C Code
+
+**IMPORTANT**: After modifying any files in `examples_fs/`, run the following command to regenerate `examples_fsdata.c`:
+
+```bash
+cd contrib/examples/httpd
+/workspaces/lwip/build/contrib/ports/unix/example_app/makefsdata examples_fs -f:examples_fsdata.c -11 -svr:lwIP
+```
+
+Or if using the Makefile-built version:
+```bash
+cd contrib/examples/httpd
+/workspaces/lwip/contrib/ports/unix/example_app/makefsdata examples_fs -f:examples_fsdata.c -11 -svr:lwIP
+```
+
+### makefsdata Options
+
+- `-f:<filename>` - Output filename (default: fsdata.c)
+- `-11` - Use HTTP 1.1 headers (recommended)
+- `-svr:<name>` - Server identifier in HTTP response
+- `-s` - Toggle subdirectory processing
+- `-m` - Include Last-Modified header
+
+### Frontend Files
+
+- `examples_fs/ssi.shtml` - Dashboard page
+- `examples_fs/config.shtml` - Network configuration page
+- SSI tags like `<!--#tag_name-->` are processed server-side
+
 ## CI/CD
 
 The project uses GitHub Actions for continuous integration (`.github/workflows/ci-linux.yml`):

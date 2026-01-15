@@ -1,315 +1,203 @@
+<!DOCTYPE html>
 <html>
-<head><title>lwIP - A Lightweight TCP/IP Stack</title></head>
-<body bgcolor="white" text="black">
+<head>
+  <meta charset="UTF-8">
+  <title>lwIP Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #fff;
+      color: #333;
+    }
+    .container {
+      display: flex;
+      min-height: 100vh;
+    }
+    /* Left Navigation */
+    .sidebar {
+      width: 180px;
+      background: #fff;
+      border-right: 1px solid #e0e0e0;
+      padding-top: 30px;
+    }
+    .nav-item {
+      display: block;
+      padding: 15px 20px;
+      color: #666;
+      text-decoration: none;
+      font-size: 15px;
+      border-left: 3px solid transparent;
+      transition: all 0.2s;
+    }
+    .nav-item:hover {
+      color: #f57c00;
+      background: #fff8f0;
+    }
+    .nav-item.active {
+      color: #f57c00;
+      border-left-color: #f57c00;
+      font-weight: 500;
+    }
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      padding: 40px 50px;
+      background: #fff;
+    }
+    .page-title {
+      font-size: 28px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 35px;
+    }
+    .section-title {
+      font-size: 14px;
+      color: #f57c00;
+      margin-bottom: 12px;
+      margin-top: 30px;
+    }
+    .section-title:first-of-type {
+      margin-top: 0;
+    }
+    /* Info Cards */
+    .info-card {
+      background: #f5f5f5;
+      border-radius: 4px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .info-card p {
+      margin-bottom: 10px;
+      line-height: 1.6;
+      color: #555;
+    }
+    .info-card p:last-child {
+      margin-bottom: 0;
+    }
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .stat-item {
+      background: #f5f5f5;
+      padding: 15px 20px;
+      border-radius: 4px;
+    }
+    .stat-label {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 5px;
+    }
+    .stat-value {
+      font-size: 16px;
+      color: #333;
+      font-weight: 500;
+    }
+    /* Config Fields */
+    .config-field {
+      margin-bottom: 20px;
+    }
+    .field-label {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 6px;
+    }
+    .field-value {
+      background: #f5f5f5;
+      padding: 12px 15px;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #333;
+    }
+    /* Footer */
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #e0e0e0;
+      font-size: 12px;
+      color: #999;
+    }
+    /* Links */
+    a.link {
+      color: #f57c00;
+      text-decoration: none;
+    }
+    a.link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Left Navigation -->
+    <nav class="sidebar">
+      <a href="/ssi.shtml" class="nav-item active">Dashboard</a>
+      <a href="/config.shtml" class="nav-item">Network</a>
+      <a href="#" class="nav-item">System</a>
+    </nav>
 
-    <table width="100%">
-      <tr valign="top"><td width="80">	  
-	  <a href="http://www.sics.se/"><img src="/img/sics.gif"
-	  border="0" alt="SICS logo" title="SICS logo"></a>
-	</td><td width="500">	  
-	  <h1>lwIP - A Lightweight TCP/IP Stack</h1>
-	  <h1><!--#HellWorl--></h1>
-	  <p>
-	    The web page you are watching was served by a simple web
-	    server running on top of the lightweight TCP/IP stack <a
-	    href="http://www.sics.se/~adam/lwip/">lwIP</a>.
-	  </p>
-	  <p>
-	    This page is here to test SSI, so here is a counter as
-	    an example of content changing for every request:
-	    "<!--#counter-->"
-	  </p>
-	  <p>
-	    And here is an example of a tag result buffer return in
-	    multiple parts: "<!--#MultPart-->"
-	  </p>
-	  <p>
-	    To test LWIP_HTTPD_CGI_SSI, here are the CGI parameters:
-	    <!--#CgiParam-->
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    lwIP is an open source implementation of the TCP/IP
-	    protocol suite that was originally written by <a
-	    href="http://www.sics.se/~adam/lwip/">Adam Dunkels
-	    of the Swedish Institute of Computer Science</a> but now is
-	    being actively developed by a team of developers
-	    distributed world-wide. Since it's release, lwIP has
-	    spurred a lot of interest and has been ported to several
-	    platforms and operating systems. lwIP can be used either
-	    with or without an underlying OS.
-	  </p>
-	  <p>
-	    The focus of the lwIP TCP/IP implementation is to reduce
-	    the RAM usage while still having a full scale TCP. This
-	    makes lwIP suitable for use in embedded systems with tens
-	    of kilobytes of free RAM and room for around 40 kilobytes
-	    of code ROM.
-	  </p>
-	  <p>
-	    More information about lwIP can be found at the lwIP
-	    homepage at <a
-	    href="http://savannah.nongnu.org/projects/lwip/">http://savannah.nongnu.org/projects/lwip/</a>
-	    or at the lwIP wiki at <a
-	    href="http://lwip.wikia.com/">http://lwip.wikia.com/</a>.
-	  </p>
-	</td><td>
-	  &nbsp;
-	</td></tr>
-      </table>
+    <!-- Main Content -->
+    <main class="main-content">
+      <h1 class="page-title">Dashboard</h1>
+
+      <div class="section-title">Welcome</div>
+      <div class="info-card">
+        <p><!--#HellWorl--></p>
+        <p>
+          This web page is served by a lightweight web server running on top of the
+          <a href="http://savannah.nongnu.org/projects/lwip/" class="link">lwIP TCP/IP stack</a>.
+        </p>
+      </div>
+
+      <div class="section-title">Server Statistics</div>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-label">Request Counter</div>
+          <div class="stat-value"><!--#counter--></div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Multi-Part Tag</div>
+          <div class="stat-value"><!--#MultPart--></div>
+        </div>
+      </div>
+
+      <div class="section-title">CGI Parameters</div>
+      <div class="config-field">
+        <div class="field-label">Current CGI Parameters</div>
+        <div class="field-value"><!--#CgiParam--></div>
+      </div>
+
+      <div class="section-title">About lwIP</div>
+      <div class="info-card">
+        <p>
+          lwIP is an open source implementation of the TCP/IP protocol suite that was originally
+          written by Adam Dunkels of the Swedish Institute of Computer Science but now is being
+          actively developed by a team of developers distributed world-wide.
+        </p>
+        <p>
+          The focus of the lwIP TCP/IP implementation is to reduce the RAM usage while still
+          having a full scale TCP. This makes lwIP suitable for use in embedded systems with
+          tens of kilobytes of free RAM and room for around 40 kilobytes of code ROM.
+        </p>
+        <p>
+          More information about lwIP can be found at the
+          <a href="http://savannah.nongnu.org/projects/lwip/" class="link">lwIP homepage</a>
+          or at the <a href="http://lwip.wikia.com/" class="link">lwIP wiki</a>.
+        </p>
+      </div>
+
+      <div class="footer">
+        Page served by lwIP httpd
+      </div>
+    </main>
+  </div>
 </body>
 </html>
-

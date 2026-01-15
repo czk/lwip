@@ -124,6 +124,8 @@ When modifying core protocol code:
 1. Run unit tests: `make -C contrib/ports/unix/check check`
 2. Build example app: `make -C contrib/ports/unix/example_app`
 3. Test option combinations: `cd contrib/ports/unix/example_app && ./iteropts.sh`
+4. 使用 fail_unless 接口的时候请记住，这个接口已经不支持带字符串参数了，请只传入条件表达式做参数
+5. 用例失败的时候，可以通过增加打印的方式来定位问题。注意用例是用check跑的，所以打印需要输出到stderr才能看得到
 
 ### Working with Ports
 

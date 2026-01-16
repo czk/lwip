@@ -3,8 +3,8 @@ set -e
 #!/bin/bash
 
 # 设置环境变量（需手动填写）
-export ANTHROPIC_AUTH_TOKEN=
-export ANTHROPIC_BASE_URL=
+export ANTHROPIC_AUTH_TOKEN=sk-BnACKGNS5fruSd9Mmm2cH4MuLXGR27sB0md9KsYN6fvR4CYi
+export ANTHROPIC_BASE_URL=https://xinghuapi.com
 
 first_run=false
 # 检查claude是否已安装
